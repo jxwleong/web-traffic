@@ -16,7 +16,7 @@ arg_value = {
     "number_of_instances": 10,
     "timeout": 10,
     "browser_exe": r"C:\Program Files\Google\Chrome\Application\chrome.exe",
-    "url": "https://www.youtube.com/watch?v=LXb3EKWsInQ",
+    "url": "https://www.youtube.com/watch?v=2CD9aEjFZwU",
 }
 
 def valid_path(path):
@@ -58,7 +58,7 @@ def arg_init():
     parser.add_argument("-u", "--url",
                         type=valid_url,
                         help="URL to be browse, "
-                             "(https://www.youtube.com/watch?v=LXb3EKWsInQ).")    
+                             "(https://www.youtube.com/watch?v=2CD9aEjFZwU.")    
     return parser.parse_args()
 
 def process_arg(args):
