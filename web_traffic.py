@@ -1,8 +1,10 @@
 import argparse
 import os
 import subprocess
+import signal
 import time
 
+import validators
 
 child_processes = []
 chrome =  r"C:\Program Files\Google\Chrome\Application\chrome.exe"
@@ -13,7 +15,30 @@ firefox =  r"C:\Program Files\Mozilla Firefox\firefox.exe"
 arg_value = {
     "number_of_instances": 10,
     "timeout": 10,
+    "browser_exe": r"C:\Program Files\Google\Chrome\Application\chrome.exe",
+    "url": "https://www.youtube.com/watch?v=LXb3EKWsInQ",
 }
+
+def valid_path(path):
+    """
+    Check whether the path is valid, if it is then will return the
+    path, else will raise exception
+    """
+    if os.path.exists(path):    
+        return path
+    else: 
+        raise argparse.ArgumentTypeError(
+                f"Invalid path '{path}' given.") 
+
+def valid_url(url):
+    """
+    Return the url if the url format isvalid else raise exception
+    """
+    if validators.url(url):
+        return url
+    else:
+        raise argparse.ArgumentTypeError(
+                f"Invalid URL received '{url}', please check the syntax.")
 
 def arg_init():
     """
@@ -25,7 +50,15 @@ def arg_init():
                         help="Number of browser to be spawned (10).")
     parser.add_argument("-t", "--timeout",
                         type=int,
-                        help="Timeout in seconds to kill the browser spawned(10).")
+                        help="Timeout in seconds to kill the browser spawned (10).")
+    parser.add_argument("-b", "--browser_exe",
+                        type=valid_path,
+                        help="Path to the browser exe, "
+                             "(C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe).")
+    parser.add_argument("-u", "--url",
+                        type=valid_url,
+                        help="URL to be browse, "
+                             "(https://www.youtube.com/watch?v=LXb3EKWsInQ).")    
     return parser.parse_args()
 
 def process_arg(args):
@@ -36,41 +69,59 @@ def process_arg(args):
     if args.number_of_instances is not None:
         arg_value["number_of_instances"] = args.number_of_instances
     if args.timeout is not None:
-        arg_value["timeout"] = args.timeout        
+        arg_value["timeout"] = args.timeout
+    if args.browser_exe is not None:
+        arg_value["browser_exe"] =  args.browser_exe
+    if args.url is not None:
+        arg_value["url"] = args.url
 
-args = arg_init()
-process_arg(args)
-print(arg_value)
+def handler(signal_received, frame):
+    """
+    Reference: https://www.devdungeon.com/content/python-catch-sigint-ctrl-c
+    Catch SIGINT/CTRL-C signal and kill the spawned processes.
+    """
+    global child_processes
+    if len(child_processes) != 0:
+        print("Killing spanwed processes...")
+        for process in child_processes:
+            process.terminate()
+    print('SIGINT or CTRL-C detected. Exiting gracefully')
+    exit(0)
 
-subprocess.run(["taskkill", "/f", "/im", os.path.basename(chrome)])
-for _ in range (arg_value["number_of_instances"]):
-    child_process = subprocess.Popen([chrome, "https://www.youtube.com/watch?v=LXb3EKWsInQ"], shell=False)
-#    child_process = subprocess.Popen([firefox, '-p',  'foo', '-no-remote', "https://www.youtube.com/watch?v=LXb3EKWsInQ"], shell=False),
-    # Slight delay is needed, else the pid to be killed later is not correct...
-    time.sleep(.5)
-    child_processes.append(child_process)
+def main():
+    signal.signal(signal.SIGINT, handler)
+    args = arg_init()
+    process_arg(args)
+    print(arg_value)
 
-time.sleep(arg_value["timeout"])
+    subprocess.run(["taskkill", "/f", "/im", os.path.basename(arg_value["browser_exe"])])
+    for _ in range (arg_value["number_of_instances"]):
+        child_process = subprocess.Popen([arg_value["browser_exe"], arg_value["url"]], shell=False)
+        # Slight delay is needed, else the pid to be killed later is not correct...
+        time.sleep(.5)
+        child_processes.append(child_process)
 
+    time.sleep(arg_value["timeout"])
+    """
+    No idea why only can kill first child process pid,
+    And killing first child process pid will kill the rest 
+    if the tabs.
 
-"""
-No idea why only can kill first child process pid,
-And killing first child process pid will kill the rest 
-if the tabs.
+    My guess is that the first pid is the actual pid of the
+    browser while the rest is just the tabs.
 
-My guess is that the first pid is the actual pid of the
-browser while the rest is just the tabs.
+    I have seen it spawn different windows but seems like the
+    killing the first pid will kill all of the spawned windows...
 
-I have seen it spawn different windows but seems like the
-killing the first pid will kill all of the spawned windows...
+    Well, it's because once I have existing browser window
+    the PID spawned is invalid...
 
-Well, it's because once I have existing browser window
-the PID spawned is invalid...
-"""
+    From the question I asked on stackoverflow, https://stackoverflow.com/q/67836707
+    looks like the first pid is the parent and if you kill
+    the parent then the child will be dead which make sense.
+    """
+    for process in child_processes:
+        process.terminate()
 
-for process in child_processes:
-    process.terminate()
-#pid = child_processes[0].pid
-#subprocess.run(f"taskkill /F /PID {pid}")
-
-# https://stackoverflow.com/questions/19037216/how-to-get-a-name-of-default-browser-using-python
+if __name__ == "__main__":
+    main()
