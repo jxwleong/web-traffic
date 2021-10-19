@@ -16,7 +16,7 @@ arg_value = {
     "number_of_instances": 10,
     "timeout": 10,
     "browser_exe": r"C:\Program Files\Google\Chrome\Application\chrome.exe",
-    "url": "https://www.youtube.com/watch?v=2CD9aEjFZwU",
+    "url": "https://www.youtube.com/watch?v=39UFSQvZPd8",
 }
 
 def valid_path(path):
@@ -58,7 +58,7 @@ def arg_init():
     parser.add_argument("-u", "--url",
                         type=valid_url,
                         help="URL to be browse, "
-                             "(https://www.youtube.com/watch?v=2CD9aEjFZwU.")    
+                             "(https://www.youtube.com/watch?v=39UFSQvZPd8.")    
     return parser.parse_args()
 
 def process_arg(args):
@@ -98,7 +98,7 @@ def main():
     for _ in range (arg_value["number_of_instances"]):
         child_process = subprocess.Popen([arg_value["browser_exe"], arg_value["url"]], shell=False)
         # Slight delay is needed, else the pid to be killed later is not correct...
-        time.sleep(.5)
+        time.sleep(1)
         child_processes.append(child_process)
 
     time.sleep(arg_value["timeout"])
@@ -120,8 +120,13 @@ def main():
     looks like the first pid is the parent and if you kill
     the parent then the child will be dead which make sense.
     """
-    for process in child_processes:
-        process.terminate()
+   # parent = child_processes[0]
+   # parent.terminate()
+    #print(dir(parent))
+    subprocess.run(["taskkill", "/f", "/im", os.path.basename(arg_value["browser_exe"])])
+    #for process in child_processes:
+        #process.terminate()
+        
 
 if __name__ == "__main__":
     main()
